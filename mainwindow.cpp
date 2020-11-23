@@ -208,6 +208,8 @@ void MainWindow::btnConnectPressed(){
             ui->btnEnrol->setEnabled(true);
             ui->btnUpload->setEnabled(true);
 
+             readSysParameters();
+
             //QProgressBar.setValue();
         }
         else {
@@ -226,6 +228,8 @@ void MainWindow::btnConnectPressed(){
         ui->btnConnect->setText("Conectar");
         ui->btnEnrol->setEnabled(false);
         ui->btnUpload->setEnabled(false);
+
+
     }
 
 
@@ -275,6 +279,13 @@ void MainWindow::drawFinger(const QByteArray& imgBuff){
 //    delete buffRecv;
 
 }
+
+void MainWindow::readSysParameters(){
+    serial.write(readSysParam);
+    SerialThread::setFingerPrintCommand(SYS_PARAM);
+
+    mSerialThread->run();
+};
 
 
 void MainWindow::setValueProgressBar(int value){

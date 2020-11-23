@@ -26,16 +26,18 @@ void SerialThread::run(){
 
     QByteArray *buffRecv = new QByteArray;
     //buffRecv->append(serial.readAll());
-    qDebug() << "Buffer Size: " << QString::number(MainWindow::serial.readBufferSize());
+    qDebug() << "Tamaño del buffer de recepción: " << QString::number(MainWindow::serial.readBufferSize());
 
     MainWindow::serial.setReadBufferSize(0);
 
-    //    buffRecv->append(MainWindow::serial.readAll());
+    qDebug() << "Tamaño del buffer seteado al máximo posible. ";
+
+    //buffRecv->append(MainWindow::serial.readAll());
 
     // MainWindow::serial.flush();
 
     buffRecv->append(MainWindow::serial.read(40000));
-    qDebug() << "Errores: " << MainWindow::serial.errorString();
+    qDebug() << "Verificando si hubo errrores al leer 4000 bytes: " << MainWindow::serial.errorString();
 
     //MainWindow::serial.isReadable()
 
@@ -46,15 +48,15 @@ void SerialThread::run(){
 
     QByteArray *imgBuff = new QByteArray;
 
-    qDebug() << "Hola! soy el thread";
 
     if ( buffRecv->count() > 256 ) {
+        qDebug() << "Hola! soy el thread, voy a procesar los bytes recibidos (si es que hay)...";
 
-    *state = STATE_IDLE;
+        *state = STATE_IDLE;
 
-    do {
-        switch(*state){
-        case STATE_IDLE:{
+        do {
+            switch(*state){
+            case STATE_IDLE:{
                         // Si se entra acá es porqué llegaron datos nuevos
                         qDebug() << "State Idle";
                         if (buffRecv->count() > 12){
@@ -69,8 +71,8 @@ void SerialThread::run(){
                         }
                         else{ continue; }
                         break;
-        }
-        case STATE_PACKET_ID:{
+             }
+             case STATE_PACKET_ID:{
                 switch(buffRecv->at(0)){
                             case PID_CMD_PACKET: {
                                                     checksum += PID_CMD_PACKET;
@@ -104,12 +106,12 @@ void SerialThread::run(){
                                      }
                                 }
                  break;
-        }
+             }
 
-        case STATE_CMD_PACKET: {
+             case STATE_CMD_PACKET: {
                               break;
-        }
-        case STATE_DATA_PACKET: {
+              }
+             case STATE_DATA_PACKET: {
                                     len = (unsigned int)(buffRecv->at(0) << 8 | buffRecv->at(1));
                                     buffRecv->remove(0, 2);
                                     for(unsigned int i = 0; i < len; i ++){
@@ -125,21 +127,21 @@ void SerialThread::run(){
                                     emit(loadingSerialBuffer(imgBuff->count()));
                                     *state = STATE_IDLE;
                                     break;
-        }
-        case STATE_ACK_PACKET: {
+              }
+             case STATE_ACK_PACKET: {
                                     // Si es un ACK, entonces un comando previo ejecutado
                                     len = (unsigned int)(buffRecv->at(0) << 8 | buffRecv->at(1));
                                     buffRecv->remove(0, 2);
                                     *state = STATE_CONFIRMATION_CODE;
                                     break;
-        }
-        case STATE_END_PACKET:{
+             }
+             case STATE_END_PACKET:{
                                     endStateMachine = true;
                                     qDebug() << "Fin de procesamiento de paquete de datos";
                                     break;
 
-        }
-        case STATE_CONFIRMATION_CODE:{
+             }
+             case STATE_CONFIRMATION_CODE:{
                                         char confirmationCode = buffRecv->at(0);
                                         switch(confirmationCode){
                                             case CONF_CODE_CMD_EXEC_COMPL:{ 			// 00h: commad execution complete;
@@ -178,8 +180,8 @@ void SerialThread::run(){
                                                         }
                                         }
                                         break;
-        }
-        case STATE_PROCESS_DATA:		// procesar datos o checksum según corresponda
+               }
+             case STATE_PROCESS_DATA:		// procesar datos o checksum según corresponda
                                 {
                                         switch(prevCmd)
                                         {
@@ -254,21 +256,41 @@ void SerialThread::run(){
                                         } break;
                                     }
 
-        case STATE_ERROR: {        //hacer algo
+              case STATE_ERROR: {        //hacer algo
                             //MainWindow::close();
                             break;
-                          }
-        default:
+                                }
+             default:
                     break;
 
-        }
+             }
 
-    } while(endStateMachine != true);
+         } while(endStateMachine != true);
+            if (prevCmd == UP_IMG){
+                emit signalOne(*imgBuff);
+            }
+            if(prevCmd == SYS_PARAM){
 
-        emit signalOne(*imgBuff);
-
-    }
-    else{
+                qDebug() << "Parametros del lector: ";
+                qDebug() << SysParamStruct.statReg[0];
+                qDebug() <<SysParamStruct.statReg[1] ;
+                qDebug() <<SysParamStruct.sysIdCode[0]  ;
+                qDebug() << SysParamStruct.sysIdCode[1] ;
+                qDebug() << SysParamStruct.fingerLibSize[0] ;
+                qDebug() << SysParamStruct.fingerLibSize[1] ;
+                qDebug() <<SysParamStruct.securityLevel[0] ;
+                qDebug() <<SysParamStruct.securityLevel[1] ;
+                qDebug() <<SysParamStruct.deviceAddress[0];
+                qDebug() <<SysParamStruct.deviceAddress[1];
+                qDebug() << SysParamStruct.deviceAddress[2];
+                qDebug() << SysParamStruct.deviceAddress[3];
+                qDebug() <<SysParamStruct.dataSize[0];
+                qDebug() <<SysParamStruct.dataSize[1];
+                qDebug() <<SysParamStruct.baudSettings[0] ;
+                qDebug() <<SysParamStruct.baudSettings[1];
+            }
+         }
+         else{
         //QMessageBox::warning(this, "Error en la comunicación","El flujo recibido no es correcto", QMessageBox::Close);
         qDebug() << "Error procesando la trama";
     }
